@@ -21,7 +21,7 @@ The script adds a new menu command to Nuke under Edit > Paste Image from Clipboa
 
 [![Watch the video](https://img.youtube.com/vi/ObUX7_2kuj8/maxresdefault.jpg)](https://youtu.be/ObUX7_2kuj8)
 
-If this script saved you some time or you just love what it does, consider buying me a cup of coffee (or tea dry white wine)!
+If this script saved you some time or you just love what it does, consider buying me a cup of coffee (or ~~tea~~ dry white wine)!
 
 I hope this script helps you out! If you have any ideas for improvement or run into any issues, feel free to share your thoughts
 
