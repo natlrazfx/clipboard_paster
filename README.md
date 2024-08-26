@@ -6,7 +6,6 @@ A Python script for Nuke that allows users to paste images or sequences from the
 ## Installation and Usage Instructions
 
 This script requires the PySide2 library. To install it, run the following command:
-bash
 **pip install PySide2**
 
 Download or clone the clipboard_paster.py script
@@ -21,8 +20,18 @@ The script adds a new menu command to Nuke under Edit > Paste Image from Clipboa
 
 [![Watch the video](https://img.youtube.com/vi/ObUX7_2kuj8/maxresdefault.jpg)](https://youtu.be/ObUX7_2kuj8)
 
-If this script saved you some time or you just love what it does, consider buying me a cup of coffee (or ~~tea~~ dry white wine)!
+## Support and Feedback
 
-I hope this script helps you out! If you have any ideas for improvement or run into any issues, feel free to share your thoughts
+If this script saved you some time or you just love what it does, please feel free to share your thoughts and consider supporting my work as I continue my journey
 
-Cheers :) 
+### 💖 GitHub Sponsors
+[Become a Sponsor](https://github.com/sponsors/natlrazfx)
+### ☕ Buy Me a Coffee
+[Buy Me a Coffee](https://www.buymeacoffee.com/natlrazfx)
+### 💸 PayPal
+[PayPal Me](https://paypal.me/natlrazfx)
+### 👾 ByBit
+119114169
+
+
+## Cheers :) 
