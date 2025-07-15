@@ -1,114 +1,96 @@
+# Cool Clipboard Paste Feature v02
 # Natalia Raz
-# Clipboard paster Nuke
 
 import nuke
-import os
-import glob
-import re
+import os, glob, re
 from collections import defaultdict
-from PySide2.QtGui import QGuiApplication, QPixmap
 from datetime import datetime
+
+# Use PySide6 on Nuke 16+, otherwise PySide2
+if nuke.NUKE_VERSION_MAJOR >= 16:
+    from PySide6.QtGui import QGuiApplication, QPixmap
+else:
+    from PySide2.QtGui import QGuiApplication, QPixmap
 
 def paste_image_from_clipboard():
     clipboard = QGuiApplication.clipboard()
-    mime_data = clipboard.mimeData()
+    mime = clipboard.mimeData()
+    if mime.hasUrls() and mime.urls()[0].isLocalFile():
+        for path in [u.toLocalFile() for u in mime.urls()]:
+            if os.path.isfile(path):
+                create_read_node(path)
+            elif os.path.isdir(path):
+                process_folder(path)
+    elif mime.hasImage():
+        pix = QPixmap(mime.imageData())
+        save_and_read(pix)
 
-    # Check if file data exists in clipboard
-    if mime_data.hasUrls() and mime_data.urls()[0].isLocalFile():
-        paths = [url.toLocalFile() for url in mime_data.urls()]
-        for path in paths:
-            if os.path.exists(path):
-                if os.path.isfile(path):
-                    create_read_node(path)
-                elif os.path.isdir(path):
-                    all_files = sorted(glob.glob(os.path.join(path, "*")))
-                    file_groups = group_files_by_type(all_files)
-                    for file_type, files in file_groups.items():
-                        # Handle video files as single files
-                        if file_type in ['.mp4', '.mov', '.avi']:
-                            for video_file in files:
-                                create_read_node(video_file)
-                        else:
-                            standalone_images = []
-                            sequence_files = []
+def process_folder(path):
+    files = sorted(glob.glob(os.path.join(path, "*")))
+    groups = defaultdict(list)
+    for f in files:
+        ext = os.path.splitext(f)[1].lower()
+        groups[ext].append(f)
+    for ext, flist in groups.items():
+        if ext in ['.mp4','.mov','.avi']:
+            for f in flist: create_read_node(f)
+        else:
+            handle_sequences_and_standalones(flist)
 
-                            for f in files:
-                                if is_part_of_sequence(f, files):
-                                    sequence_files.append(f)
-                                else:
-                                    standalone_images.append(f)
+def handle_sequences_and_standalones(files):
+    seq, stand = [], []
+    for f in files:
+        (seq if is_part_of_sequence(f, files) else stand).append(f)
+    load_sequence(seq)
+    for f in stand: create_read_node(f)
 
-                            # Handle sequences
-                            sequence_files.sort(key=lambda x: extract_frame_number(x))
-                            while sequence_files:
-                                current_sequence = [sequence_files.pop(0)]
-                                current_padding_length = len(extract_frame_number(current_sequence[0]))
-                                remaining_files = []
-                                for f in sequence_files:
-                                    if len(extract_frame_number(f)) == current_padding_length:
-                                        current_sequence.append(f)
-                                    else:
-                                        remaining_files.append(f)
-                                sequence_files = remaining_files
-                                start_frame = int(extract_frame_number(current_sequence[0]))
-                                end_frame = int(extract_frame_number(current_sequence[-1]))
-                                # Correctly construct the sequence path using the base name of the first file in the sequence
-                                base_name = re.sub(r"\d+$", "", os.path.basename(os.path.splitext(current_sequence[0])[0]))
-                                if not base_name.endswith('_'):
-                                    base_name += '_'
-                                sequence_path = os.path.join(os.path.dirname(current_sequence[0]), base_name + "%0{}d".format(current_padding_length) + os.path.splitext(current_sequence[0])[1])
-                                create_read_node(sequence_path, start_frame, end_frame)
+def load_sequence(sequence_files):
+    sequence_files.sort(key=extract_frame_number)
+    while sequence_files:
+        cs = [sequence_files.pop(0)]
+        pad = len(extract_frame_number(cs[0]))
+        rem = []
+        for f in sequence_files:
+            if len(extract_frame_number(f)) == pad:
+                cs.append(f)
+            else:
+                rem.append(f)
+        sequence_files = rem
+        start = int(extract_frame_number(cs[0]))
+        end = int(extract_frame_number(cs[-1]))
+        base = re.sub(r"\d+$", "", os.path.splitext(os.path.basename(cs[0]))[0])
+        if not base.endswith('_'):
+            base += '_'
+        seqpath = os.path.join(os.path.dirname(cs[0]), base + "%0{}d".format(pad) + os.path.splitext(cs[0])[1])
+        create_read_node(seqpath, start, end)
 
-                            # Handle standalone images
-                            for img in standalone_images:
-                                create_read_node(img)
+def save_and_read(pix):
+    script = nuke.root().name()
+    folder = os.path.join(os.path.dirname(script), "temp") if script != "Root" else os.path.expanduser("~")
+    os.makedirs(folder, exist_ok=True)
+    now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    fp = os.path.join(folder, f"clipboard_image_{now}.png")
+    pix.save(fp, "PNG")
+    create_read_node(fp, 1, 1)
 
-    elif mime_data.hasImage():
-        pixmap = QPixmap(mime_data.imageData())
-        script_path = nuke.root().name()
-        project_folder = os.path.join(os.path.dirname(script_path), "temp") if script_path != "Root" else os.path.join(os.path.expanduser("~"), "temp")
-        now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        file_name = "clipboard_image_" + now + ".png"
-        file_path = os.path.join(project_folder, file_name)
-        os.makedirs(project_folder, exist_ok=True)
-        pixmap.save(file_path, "PNG")
-        create_read_node(file_path, 1, 1)
+def group_files_by_type(flist): pass  # replaced by process_folder
 
-def group_files_by_type(files):
-    """Groups files by their extensions."""
-    file_groups = defaultdict(list)
-    for file in files:
-        ext = os.path.splitext(file)[1].lower()
-        file_groups[ext].append(file)
-    return file_groups
+def extract_frame_number(fn):
+    m = re.search(r"(\d+)(?=\.\w+$)", fn)
+    return m.group(1) if m else "0"
 
-def extract_frame_number(filename):
-    """Extracts the frame number from the filename."""
-    match = re.search(r"(\d+)(?=\.\w+$)", filename)
-    if match:
-        return match.group(1)
-    else:
-        return "0"
+def is_part_of_sequence(fn, files):
+    base = re.sub(r"\d+$", "", os.path.splitext(os.path.basename(fn))[0])
+    return any(re.sub(r"\d+$","",os.path.splitext(os.path.basename(f))[0]) == base for f in files if f != fn)
 
-def is_part_of_sequence(filename, files):
-    """Determines if a file is part of a sequence."""
-    base_name = re.sub(r"\d+$", "", os.path.basename(os.path.splitext(filename)[0]))
-    for other_file in files:
-        if other_file == filename:
-            continue
-        other_base = re.sub(r"\d+$", "", os.path.basename(os.path.splitext(other_file)[0]))
-        if other_base == base_name:
-            return True
-    return False
-
-def create_read_node(file_path, start_frame=None, end_frame=None):
-    read_node = nuke.createNode("Read")
-    read_node["file"].fromUserText(file_path)
-    if start_frame and end_frame:
-        read_node["first"].setValue(start_frame)
-        read_node["last"].setValue(end_frame)
-        read_node["origfirst"].setValue(start_frame)
-        read_node["origlast"].setValue(end_frame)
+def create_read_node(fp, start=None, end=None):
+    n = nuke.createNode("Read")
+    n["file"].fromUserText(fp)
+    if start and end:
+        n["first"].setValue(start)
+        n["last"].setValue(end)
+        n["origfirst"].setValue(start)
+        n["origlast"].setValue(start)
 
 nuke.menu('Nuke').addCommand('Edit/Paste Image from Clipboard', 'paste_image_from_clipboard()', 'Ctrl+Alt+V')
 
