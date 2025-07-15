@@ -1,13 +1,15 @@
 # clipboard_paster
 A Python script for Nuke that allows users to paste images or sequences from the clipboard directly into the project. It automatically detects image sequences and handles multiple file types efficiently.
+Compatible with Nuke 16 (PySide6)
 
 ![clipboardpaster](https://github.com/user-attachments/assets/b31adfbd-a3d6-4362-a434-d1e5245fbc20)
 
 
 ## Installation and Usage Instructions
 
-This script requires the PySide2 library. To install it, run the following command:
+This script requires the PySide2 or PySide6 (Nuke16+) library. To install it, run the following command:
 **pip install PySide2**
+**pip install PySide6**
 
 Download or clone the clipboard_paster.py script
 It is recommended to add this script to your .nuke/menu.py file for automatic loading. You can do this by adding the following line in **.nuke/menu.py**:
